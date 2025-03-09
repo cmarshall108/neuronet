@@ -107,9 +107,19 @@ int main(int argc, char** argv) {
     // Initialize NeuroNet
     neuronet::initialize();
     
+    // Enable colored logging (it's enabled by default, but showing for demonstration)
+    neuronet::set_log_color_enabled(true);
+    
     std::cout << "NeuroNet Benchmark" << std::endl;
     std::cout << "===============================================" << std::endl;
     std::cout << neuronet::libraryInfo() << std::endl;
+    
+    // Test all log levels
+    log_debug("This is a DEBUG message (cyan)");
+    log_info("This is an INFO message (green)");
+    log_warn("This is a WARNING message (yellow)");
+    log_error("This is an ERROR message (red)");
+    // Uncomment to test fatal (will terminate program): log_fatal("This is a FATAL message (bold red)");
     
     // Benchmark parameters
     std::vector<int> matmul_sizes = {128, 256, 512, 1024, 2048, 4096};

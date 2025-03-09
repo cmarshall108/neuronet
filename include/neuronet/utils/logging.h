@@ -14,12 +14,19 @@ enum class LogLevel {
     Fatal
 };
 
+// Enable or disable colored output
+void set_log_color_enabled(bool enabled);
+bool is_log_color_enabled();
+
 // Set/get global log level
 void set_log_level(LogLevel level);
 LogLevel get_log_level();
 
 // Get current timestamp as string
 std::string get_timestamp();
+
+// Get color code for log level
+std::string get_level_color(LogLevel level);
 
 // Log message at specific level
 void log_message(LogLevel level, const std::string& message);

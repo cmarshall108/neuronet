@@ -10,6 +10,27 @@ namespace neuronet {
 // Global log level
 static LogLevel g_log_level = LogLevel::Info;
 static std::mutex g_log_mutex;
+static bool g_color_enabled = true;
+
+// ANSI color codes
+const std::string RESET = "\033[0m";
+const std::string BLACK = "\033[30m";
+const std::string RED = "\033[31m";
+const std::string GREEN = "\033[32m";
+const std::string YELLOW = "\033[33m";
+const std::string BLUE = "\033[34m";
+const std::string MAGENTA = "\033[35m";
+const std::string CYAN = "\033[36m";
+const std::string WHITE = "\033[37m";
+const std::string BOLD = "\033[1m";
+
+void set_log_color_enabled(bool enabled) {
+    g_color_enabled = enabled;
+}
+
+bool is_log_color_enabled() {
+    return g_color_enabled;
+}
 
 void set_log_level(LogLevel level) {
     g_log_level = level;
@@ -31,6 +52,21 @@ std::string get_timestamp() {
     return ss.str();
 }
 
+std::string get_level_color(LogLevel level) {
+    if (!g_color_enabled) {
+        return "";
+    }
+    
+    switch (level) {
+        case LogLevel::Debug:   return CYAN;     // Cyan for debug messages
+        case LogLevel::Info:    return GREEN;    // Green for info
+        case LogLevel::Warning: return YELLOW;   // Yellow for warnings
+        case LogLevel::Error:   return RED;      // Red for errors
+        case LogLevel::Fatal:   return BOLD + RED; // Bold red for fatal errors
+        default:                return "";
+    }
+}
+
 void log_message(LogLevel level, const std::string& message) {
     if (level < g_log_level) {
         return;
@@ -47,7 +83,11 @@ void log_message(LogLevel level, const std::string& message) {
     
     std::lock_guard<std::mutex> lock(g_log_mutex);
     
-    std::cerr << "[" << get_timestamp() << "][" << level_str << "] " << message << std::endl;
+    std::string color = get_level_color(level);
+    std::string reset = g_color_enabled ? RESET : "";
+    
+    // Format: [timestamp][level_colored] message
+    std::cerr << "[" << get_timestamp() << "]" << color << "[" << level_str << "]" << reset << " " << message << std::endl;
     
     if (level == LogLevel::Fatal) {
         std::abort();
