@@ -36,15 +36,16 @@ Tensor cross_entropy_loss(const Tensor& logits, const Tensor& targets, int dim) 
     Tensor probs = logits.softmax(dim);
     
     // Create a small tensor for numerical stability
-    float epsilon = 1e-7;
+    float epsilon = 1e-7f;
+    // Use the new scalar constructor
     Tensor eps_tensor({1}, epsilon, logits.dtype(), logits.device().type());
     
     // Clip probabilities to avoid log(0)
     // probs = max(probs, epsilon)
-    probs = ops::maximum(probs, eps_tensor);
+    Tensor clipped_probs = ops::maximum(probs, eps_tensor);
     
     // Compute negative log likelihood
-    Tensor log_probs = ops::log(probs);
+    Tensor log_probs = ops::log(clipped_probs);
     
     // If targets are class indices (1D)
     if (targets.shape().size() == 1) {
@@ -57,7 +58,9 @@ Tensor cross_entropy_loss(const Tensor& logits, const Tensor& targets, int dim) 
     // If targets are one-hot encoded (2D)
     if (targets.shape() == logits_shape) {
         // NLL: -sum(targets * log_probs, dim=1)
-        Tensor nll = -(targets * log_probs).sum(dim);
+        Tensor mult = targets * log_probs;
+        Tensor summed = mult.sum(dim);
+        Tensor nll = ops::negate(summed);
         return nll.mean();
     }
     

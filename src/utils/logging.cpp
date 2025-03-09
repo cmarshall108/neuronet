@@ -54,27 +54,201 @@ void log_message(LogLevel level, const std::string& message) {
     }
 }
 
-// Log implementations for different severity levels
-void log_debug(const std::string& format, const std::vector<std::string>& args) {
-    log_message(LogLevel::Debug, format_string(format, args));
+// Modified log functions to accept variadic arguments directly
+void log_debug(const std::string& format) {
+    log_message(LogLevel::Debug, format);
 }
 
-void log_info(const std::string& format, const std::vector<std::string>& args) {
-    log_message(LogLevel::Info, format_string(format, args));
+void log_debug(const std::string& format, const std::string& arg) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg);
+    }
+    log_message(LogLevel::Debug, message);
 }
 
-void log_warn(const std::string& format, const std::vector<std::string>& args) {
-    log_message(LogLevel::Warning, format_string(format, args));
+void log_debug(const std::string& format, const std::string& arg1, const std::string& arg2) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+        }
+    }
+    log_message(LogLevel::Debug, message);
 }
 
-void log_error(const std::string& format, const std::vector<std::string>& args) {
-    log_message(LogLevel::Error, format_string(format, args));
+void log_info(const std::string& format) {
+    log_message(LogLevel::Info, format);
 }
 
-void log_fatal(const std::string& format, const std::vector<std::string>& args) {
-    log_message(LogLevel::Fatal, format_string(format, args));
+void log_info(const std::string& format, const std::string& arg) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg);
+    }
+    log_message(LogLevel::Info, message);
 }
 
+void log_info(const std::string& format, const std::string& arg1, const std::string& arg2) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+        }
+    }
+    log_message(LogLevel::Info, message);
+}
+
+// Add the new 3-argument version for log_info
+void log_info(const std::string& format, const std::string& arg1, const std::string& arg2, const std::string& arg3) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+            pos = message.find("{}", pos + arg2.length());
+            if (pos != std::string::npos) {
+                message.replace(pos, 2, arg3);
+            }
+        }
+    }
+    log_message(LogLevel::Info, message);
+}
+
+// For longer argument lists (like Conv2d creation)
+void log_info(const std::string& format, const std::string& arg1, const std::string& arg2,
+              const std::string& arg3, const std::string& arg4, const std::string& arg5, 
+              const std::string& arg6, const std::string& arg7) {
+    std::string message = format;
+    size_t pos = 0;
+    
+    if ((pos = message.find("{}")) != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        if ((pos = message.find("{}")) != std::string::npos) {
+            message.replace(pos, 2, arg2);
+            if ((pos = message.find("{}")) != std::string::npos) {
+                message.replace(pos, 2, arg3);
+                if ((pos = message.find("{}")) != std::string::npos) {
+                    message.replace(pos, 2, arg4);
+                    if ((pos = message.find("{}")) != std::string::npos) {
+                        message.replace(pos, 2, arg5);
+                        if ((pos = message.find("{}")) != std::string::npos) {
+                            message.replace(pos, 2, arg6);
+                            if ((pos = message.find("{}")) != std::string::npos) {
+                                message.replace(pos, 2, arg7);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    log_message(LogLevel::Info, message);
+}
+
+void log_warn(const std::string& format) {
+    log_message(LogLevel::Warning, format);
+}
+
+void log_warn(const std::string& format, const std::string& arg) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg);
+    }
+    log_message(LogLevel::Warning, message);
+}
+
+void log_error(const std::string& format) {
+    log_message(LogLevel::Error, format);
+}
+
+void log_error(const std::string& format, const std::string& arg) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg);
+    }
+    log_message(LogLevel::Error, message);
+}
+
+void log_error(const std::string& format, const std::string& arg1, const std::string& arg2) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+        }
+    }
+    log_message(LogLevel::Error, message);
+}
+
+void log_error(const std::string& format, const std::string& arg1, const std::string& arg2, const std::string& arg3) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+            pos = message.find("{}", pos + arg2.length());
+            if (pos != std::string::npos) {
+                message.replace(pos, 2, arg3);
+            }
+        }
+    }
+    log_message(LogLevel::Error, message);
+}
+
+void log_error(const std::string& format, const std::string& arg1, const std::string& arg2, 
+               const std::string& arg3, const std::string& arg4) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+            pos = message.find("{}", pos + arg2.length());
+            if (pos != std::string::npos) {
+                message.replace(pos, 2, arg3);
+                pos = message.find("{}", pos + arg3.length());
+                if (pos != std::string::npos) {
+                    message.replace(pos, 2, arg4);
+                }
+            }
+        }
+    }
+    log_message(LogLevel::Error, message);
+}
+
+void log_fatal(const std::string& format) {
+    log_message(LogLevel::Fatal, format);
+}
+
+void log_fatal(const std::string& format, const std::string& arg) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg);
+    }
+    log_message(LogLevel::Fatal, message);
+}
+
+// Keeping this for backward compatibility, but we'll use direct string versions above
 std::string format_string(const std::string& format, const std::vector<std::string>& args) {
     std::string result = format;
     size_t pos = 0;

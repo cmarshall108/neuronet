@@ -204,6 +204,89 @@ Tensor softmax(const Tensor& input, int dim) {
     return result;
 }
 
+Tensor maximum(const Tensor& a, const Tensor& b) {
+    // Check shapes
+    const auto& a_shape = a.shape();
+    const auto& b_shape = b.shape();
+    
+    // Simple case: both tensors have same shape
+    if (a_shape == b_shape) {
+        Tensor result(a_shape, a.dtype(), DeviceType::CPU);
+        
+        const float* a_data = a.data<float>();
+        const float* b_data = b.data<float>();
+        float* result_data = result.data<float>();
+        
+        int64_t size = a.size();
+        
+        parallel_for(0, size, [&](int64_t start, int64_t end) {
+            for (int64_t i = start; i < end; ++i) {
+                result_data[i] = std::max(a_data[i], b_data[i]);
+            }
+        });
+        
+        return result;
+    }
+    
+    // Handle broadcasting case (simplified)
+    if (b_shape.size() == 1 && b.size() == 1) {
+        // b is a scalar tensor
+        Tensor result(a_shape, a.dtype(), DeviceType::CPU);
+        
+        const float* a_data = a.data<float>();
+        const float* b_data = b.data<float>();
+        float* result_data = result.data<float>();
+        
+        int64_t size = a.size();
+        float scalar_value = b_data[0];
+        
+        parallel_for(0, size, [&](int64_t start, int64_t end) {
+            for (int64_t i = start; i < end; ++i) {
+                result_data[i] = std::max(a_data[i], scalar_value);
+            }
+        });
+        
+        return result;
+    }
+    
+    log_error("Unsupported shapes for maximum operation");
+    return Tensor();
+}
+
+Tensor log(const Tensor& input) {
+    Tensor result(input.shape(), input.dtype(), DeviceType::CPU);
+    
+    const float* input_data = input.data<float>();
+    float* result_data = result.data<float>();
+    
+    int64_t size = input.size();
+    
+    parallel_for(0, size, [&](int64_t start, int64_t end) {
+        for (int64_t i = start; i < end; ++i) {
+            result_data[i] = std::log(input_data[i]);
+        }
+    });
+    
+    return result;
+}
+
+Tensor mul_scalar(const Tensor& tensor, float scalar) {
+    Tensor result(tensor.shape(), tensor.dtype(), DeviceType::CPU);
+    
+    const float* input_data = tensor.data<float>();
+    float* result_data = result.data<float>();
+    
+    int64_t size = tensor.size();
+    
+    parallel_for(0, size, [&](int64_t start, int64_t end) {
+        for (int64_t i = start; i < end; ++i) {
+            result_data[i] = input_data[i] * scalar;
+        }
+    });
+    
+    return result;
+}
+
 } // namespace cpu
 } // namespace ops
 } // namespace neuronet

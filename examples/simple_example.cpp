@@ -6,6 +6,7 @@
 #include <vector>
 
 using namespace neuronet;
+using namespace neuronet::ops;
 
 // Simple feed-forward neural network for illustration
 class SimpleNN {

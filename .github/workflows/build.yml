@@ -1,0 +1,66 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libcurl4-openssl-dev
+    
+    - name: Configure and build
+      run: |
+        mkdir -p build && cd build
+        cmake .. -DNEURONET_USE_CUDA=OFF -DNEURONET_USE_METAL=OFF
+        make -j$(nproc)
+    
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure
+
+  build_macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        brew install cmake curl
+    
+    - name: Configure and build
+      run: |
+        mkdir -p build && cd build
+        cmake .. -DNEURONET_USE_CUDA=OFF
+        make -j$(sysctl -n hw.ncpu)
+    
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure
+
+  build_windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure and build
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DNEURONET_USE_CUDA=OFF -DNEURONET_USE_METAL=OFF
+        cmake --build . --config Release
+    
+    - name: Run tests
+      run: |
+        cd build
+        ctest -C Release --output-on-failure

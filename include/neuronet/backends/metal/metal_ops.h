@@ -22,6 +22,9 @@ Tensor sigmoid(const Tensor& input);
 Tensor tanh(const Tensor& input);
 Tensor softmax(const Tensor& input, int dim);
 
+Tensor mul_scalar(const Tensor& tensor, float scalar);
+Tensor add_scalar(const Tensor& tensor, float scalar);
+
 } // namespace metal
 } // namespace ops
 } // namespace neuronet

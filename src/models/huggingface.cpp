@@ -88,7 +88,8 @@ bool HuggingFaceModelLoader::download_file(const std::string& url, const std::st
     // Check for errors
     bool success = (res == CURLE_OK);
     if (!success) {
-        log_error("Failed to download {}: {}", url, curl_easy_strerror(res));
+        log_error("Failed to download {}", url);
+        log_error("CURL error: {}", curl_easy_strerror(res));
         // Remove the potentially partially downloaded file
         fclose(fp);
         fs::remove(local_path);
@@ -130,7 +131,7 @@ std::unordered_map<std::string, std::string> HuggingFaceModelLoader::load_config
             }
         }
         
-        log_info("Loaded model config with {} parameters", config.size());
+        log_info("Loaded model config with {} parameters", std::to_string(config.size()));
     } catch (const std::exception& e) {
         log_error("Error loading config: {}", e.what());
     }
@@ -279,7 +280,7 @@ BertModel::BertModel(const std::unordered_map<std::string, std::string>& config)
     // A full implementation would create a proper neural network matching the BERT architecture
     // with embedding layers, attention layers, etc.
     log_info("Initialized BERT model with {} hidden layers, {} attention heads", 
-             num_hidden_layers_, num_attention_heads_);
+             std::to_string(num_hidden_layers_), std::to_string(num_attention_heads_));
 }
 
 Tensor BertModel::forward(const Tensor& input) {
@@ -312,7 +313,7 @@ GPT2Model::GPT2Model(const std::unordered_map<std::string, std::string>& config)
     
     // Initialize GPT2 model architecture - simplified implementation
     log_info("Initialized GPT2 model with {} hidden layers, {} attention heads", 
-             num_hidden_layers_, num_attention_heads_);
+             std::to_string(num_hidden_layers_), std::to_string(num_attention_heads_));
 }
 
 Tensor GPT2Model::forward(const Tensor& input) {

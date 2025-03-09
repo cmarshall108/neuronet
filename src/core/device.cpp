@@ -4,9 +4,19 @@
 #include <cuda_runtime.h>
 #endif
 
+// Fix the Metal/Foundation imports
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
+#ifdef __OBJC__
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
+#else
+// For C++ code, we just need the forward declarations
+extern "C" {
+    // Forward declarations of required Objective-C types
+    typedef struct objc_object *id;
+    bool MTLCreateSystemDefaultDevice(void);
+}
+#endif
 #endif
 
 namespace neuronet {
@@ -59,12 +69,8 @@ bool Device::isCudaAvailable() {
 
 bool Device::isMetalAvailable() {
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-    @autoreleasepool {
-        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-        bool available = (device != nil);
-        [device release];
-        return available;
-    }
+    // Simple check without using Objective-C directly in C++ file
+    return MTLCreateSystemDefaultDevice();
 #else
     return false;
 #endif

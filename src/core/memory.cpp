@@ -8,8 +8,7 @@
 #endif
 
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-#import <Foundation/Foundation.h>
-#import <Metal/Metal.h>
+#include <neuronet/backends/metal/metal_wrapper.h>
 #endif
 
 namespace neuronet {
@@ -22,7 +21,7 @@ void* allocate(const Device& device, size_t size) {
         case DeviceType::CPU: {
             ptr = std::malloc(size);
             if (!ptr) {
-                log_error("Failed to allocate CPU memory of size {}", size);
+                log_error("Failed to allocate CPU memory of size {}", std::to_string(size));
             }
             break;
         }
@@ -32,7 +31,7 @@ void* allocate(const Device& device, size_t size) {
             cudaError_t status = cudaMalloc(&ptr, size);
             if (status != cudaSuccess) {
                 log_error("Failed to allocate CUDA memory of size {}: {}", 
-                          size, cudaGetErrorString(status));
+                          std::to_string(size), cudaGetErrorString(status));
                 return nullptr;
             }
 #else
@@ -43,18 +42,7 @@ void* allocate(const Device& device, size_t size) {
         
         case DeviceType::Metal: {
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-            @autoreleasepool {
-                id<MTLDevice> metal_device = (__bridge id<MTLDevice>)metal::get_metal_device();
-                id<MTLBuffer> buffer = [metal_device newBufferWithLength:size 
-                                                       options:MTLResourceStorageModeShared];
-                if (!buffer) {
-                    log_error("Failed to allocate Metal buffer of size {}", size);
-                    return nullptr;
-                }
-                
-                // Store the buffer pointer. This needs proper cleanup.
-                ptr = (__bridge_retained void*)buffer;
-            }
+            ptr = metal::metal_allocate_buffer(size);
 #else
             log_error("Metal support not enabled");
 #endif
@@ -86,8 +74,7 @@ void free(const Device& device, void* ptr) {
         
         case DeviceType::Metal: {
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-            // Release the Metal buffer
-            CFBridgingRelease(ptr);
+            metal::metal_free_buffer(ptr);
 #endif
             break;
         }
@@ -113,11 +100,7 @@ void copy_to_device(const Device& device, void* dst, const void* src, size_t siz
         
         case DeviceType::Metal: {
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-            @autoreleasepool {
-                id<MTLBuffer> metal_buffer = (__bridge id<MTLBuffer>)dst;
-                void* buffer_ptr = [metal_buffer contents];
-                std::memcpy(buffer_ptr, src, size);
-            }
+            metal::metal_copy_to_device(dst, src, size);
 #endif
             break;
         }
@@ -143,11 +126,7 @@ void copy_from_device(const Device& device, void* dst, const void* src, size_t s
         
         case DeviceType::Metal: {
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-            @autoreleasepool {
-                id<MTLBuffer> metal_buffer = (__bridge id<MTLBuffer>)src;
-                void* buffer_ptr = [metal_buffer contents];
-                std::memcpy(dst, buffer_ptr, size);
-            }
+            metal::metal_copy_from_device(dst, src, size);
 #endif
             break;
         }
@@ -172,14 +151,8 @@ void copy_between_devices(const Device& src_device, const Device& dst_device,
                 
             case DeviceType::Metal:
 #if defined(__APPLE__) && defined(NEURONET_USE_METAL)
-                // For Metal, we need to get the contents pointers and copy
-                @autoreleasepool {
-                    id<MTLBuffer> src_buffer = (__bridge id<MTLBuffer>)src;
-                    id<MTLBuffer> dst_buffer = (__bridge id<MTLBuffer>)dst;
-                    void* src_ptr = [src_buffer contents];
-                    void* dst_ptr = [dst_buffer contents];
-                    std::memcpy(dst_ptr, src_ptr, size);
-                }
+                // Direct metal-to-metal copy
+                metal::metal_copy_to_device(dst, src, size);
                 return;
 #endif
                 break;

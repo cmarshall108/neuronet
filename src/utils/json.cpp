@@ -25,7 +25,8 @@ json load_json_file(const std::string& filepath) {
         
         return json::parse(file);
     } catch (const std::exception& e) {
-        log_error("Error loading JSON file {}: {}", filepath, e.what());
+        log_error("Error loading JSON file {}: {}", 
+                 filepath, std::string(e.what()));
         return json::object();
     }
 }
@@ -41,7 +42,8 @@ bool save_json_file(const std::string& filepath, const json& data, int indent) {
         file << data.dump(indent);
         return true;
     } catch (const std::exception& e) {
-        log_error("Error saving JSON file {}: {}", filepath, e.what());
+        log_error("Error saving JSON file {}: {}", 
+                 filepath, std::string(e.what()));
         return false;
     }
 }

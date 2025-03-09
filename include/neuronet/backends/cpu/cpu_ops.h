@@ -12,6 +12,9 @@ Tensor add(const Tensor& a, const Tensor& b);
 Tensor subtract(const Tensor& a, const Tensor& b);
 Tensor multiply(const Tensor& a, const Tensor& b);
 Tensor divide(const Tensor& a, const Tensor& b);
+Tensor maximum(const Tensor& a, const Tensor& b);
+Tensor log(const Tensor& input);
+Tensor mul_scalar(const Tensor& tensor, float scalar);
 
 // Matrix operations
 Tensor matmul(const Tensor& a, const Tensor& b);

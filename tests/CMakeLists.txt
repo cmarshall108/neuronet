@@ -20,12 +20,13 @@ add_executable(neuronet_tests
     test_nn.cpp
 )
 
-# Link with neuronet and GTest
+# Link with neuronet, GTest, and nlohmann_json
 target_link_libraries(neuronet_tests
     PRIVATE
     neuronet
     gtest
     gtest_main
+    nlohmann_json::nlohmann_json
 )
 
 # Add the test

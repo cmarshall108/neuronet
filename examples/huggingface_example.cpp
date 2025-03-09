@@ -1,10 +1,12 @@
 #include <neuronet/core/tensor.h>
+#include <neuronet/core/ops.h>
 #include <neuronet/models/huggingface.h>
 #include <neuronet/utils/logging.h>
 #include <iostream>
 #include <vector>
 
 using namespace neuronet;
+using namespace neuronet::ops;
 
 int main(int argc, char** argv) {
     // Initialize the operations backends

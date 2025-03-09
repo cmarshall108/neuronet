@@ -20,6 +20,8 @@
 #include <neuronet/utils/logging.h>
 #include <neuronet/utils/json.h>
 
+#include <string>
+
 /**
  * @namespace neuronet
  * @brief Main namespace for the NeuroNet library
@@ -53,12 +55,69 @@ inline void cleanup() {
 }
 
 /**
- * @brief Get library version
+ * @brief Get library version string
  * 
- * @return const char* Version string
+ * @return std::string Version string
  */
-inline const char* version() {
-    return "0.1.0";
+inline std::string version() {
+#ifdef NEURONET_VERSION
+    return NEURONET_VERSION;
+#else
+    return "0.1.0"; // Fallback if not defined during compilation
+#endif
+}
+
+/**
+ * @brief Check if Tesla K80 GPU was detected during initialization
+ * 
+ * @return bool True if Tesla K80 is available and CUDA support is enabled
+ */
+inline bool isTeslaK80Available() {
+#if defined(NEURONET_USE_CUDA) && defined(NEURONET_TESLA_K80_AVAILABLE)
+    return true;
+#else
+    return false;
+#endif
+}
+
+/**
+ * @brief Check if Apple Silicon processor was detected
+ * 
+ * @return bool True if running on Apple Silicon (M1, M2, etc.)
+ */
+inline bool isAppleSiliconAvailable() {
+#if defined(__APPLE__) && defined(NEURONET_APPLE_SILICON)
+    return true;
+#else
+    return false;
+#endif
+}
+
+/**
+ * @brief Returns information about the library and available hardware
+ * 
+ * @return std::string Detailed information about the library build and hardware support
+ */
+inline std::string libraryInfo() {
+    std::string info = "NeuroNet v" + version() + "\n";
+    info += "Supported backends:\n";
+    info += "- CPU: YES\n";
+
+#ifdef NEURONET_USE_CUDA
+    info += "- CUDA: YES";
+    info += isTeslaK80Available() ? " (Tesla K80 detected)\n" : "\n";
+#else
+    info += "- CUDA: NO\n";
+#endif
+
+#if defined(__APPLE__) && defined(NEURONET_USE_METAL)
+    info += "- Metal: YES";
+    info += isAppleSiliconAvailable() ? " (Apple Silicon detected)\n" : "\n";
+#else
+    info += "- Metal: NO\n";
+#endif
+
+    return info;
 }
 
 } // namespace neuronet

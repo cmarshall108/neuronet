@@ -28,6 +28,9 @@ public:
            DeviceType device_type = DeviceType::CPU);
     Tensor(const std::vector<int64_t>& shape, const void* data, 
            DType dtype = DType::Float32, DeviceType device_type = DeviceType::CPU);
+    // Add scalar constructor
+    Tensor(const std::vector<int64_t>& shape, float scalar_value,
+           DType dtype = DType::Float32, DeviceType device_type = DeviceType::CPU);
     
     // Copy and move constructors/assignment
     Tensor(const Tensor& other);
@@ -89,6 +92,9 @@ public:
     // Save/load
     void save(const std::string& filename) const;
     static Tensor load(const std::string& filename, DeviceType device_type = DeviceType::CPU);
+
+    // Add a grad() method for optimizer support
+    Tensor* grad() const { return nullptr; } // Placeholder, to be implemented properly
 
 private:
     std::shared_ptr<TensorImpl> impl_;
