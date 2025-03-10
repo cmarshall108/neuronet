@@ -62,8 +62,8 @@ protected:
 class BertModel : public HuggingFaceModel {
 public:
     BertModel(const std::unordered_map<std::string, std::string>& config);
-    ~BertModel() override = default;
     
+    // Override forward to handle token-based input
     Tensor forward(const Tensor& input) override;
     
 private:

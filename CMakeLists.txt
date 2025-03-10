@@ -116,6 +116,7 @@ set(CORE_SOURCES
     src/nn/optimizer.cpp
     src/models/model.cpp
     src/models/huggingface.cpp
+    src/nlp/tokenizer.cpp
     src/utils/logging.cpp
     src/utils/json.cpp
 )
