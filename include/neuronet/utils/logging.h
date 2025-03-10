@@ -38,6 +38,7 @@ std::string format_string(const std::string& format, const std::vector<std::stri
 void log_debug(const std::string& format);
 void log_debug(const std::string& format, const std::string& arg);
 void log_debug(const std::string& format, const std::string& arg1, const std::string& arg2);
+void log_debug(const std::string& format, const std::string& arg1, const std::string& arg2, const std::string& arg3);
 
 void log_info(const std::string& format);
 void log_info(const std::string& format, const std::string& arg);

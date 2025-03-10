@@ -121,6 +121,23 @@ void log_debug(const std::string& format, const std::string& arg1, const std::st
     log_message(LogLevel::Debug, message);
 }
 
+void log_debug(const std::string& format, const std::string& arg1, const std::string& arg2, const std::string& arg3) {
+    std::string message = format;
+    size_t pos = message.find("{}");
+    if (pos != std::string::npos) {
+        message.replace(pos, 2, arg1);
+        pos = message.find("{}", pos + arg1.length());
+        if (pos != std::string::npos) {
+            message.replace(pos, 2, arg2);
+            pos = message.find("{}", pos + arg2.length());
+            if (pos != std::string::npos) {
+                message.replace(pos, 2, arg3);
+            }
+        }
+    }
+    log_message(LogLevel::Debug, message);
+}
+
 void log_info(const std::string& format) {
     log_message(LogLevel::Info, format);
 }
