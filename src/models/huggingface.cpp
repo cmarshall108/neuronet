@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>  // For std::setw, std::setfill
+#include <iostream> // For std::cout, std::flush
 
 namespace fs = std::filesystem;
 
@@ -17,6 +19,35 @@ namespace models {
 // Helper function for CURL data writing
 size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
     return fwrite(ptr, size, nmemb, stream);
+}
+
+// Progress callback function for CURL
+int progress_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    // Avoid division by zero
+    if (dltotal <= 0) return 0;
+    
+    // Calculate percentage and update progress bar
+    double percentage = static_cast<double>(dlnow) / static_cast<double>(dltotal) * 100.0;
+    int barWidth = 40; // Width of progress bar
+    
+    // Convert total download size to MB for display
+    double totalMB = static_cast<double>(dltotal) / (1024.0 * 1024.0);
+    double downloadedMB = static_cast<double>(dlnow) / (1024.0 * 1024.0);
+    
+    std::cout << "\r[";
+    int pos = static_cast<int>(barWidth * percentage / 100.0);
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    
+    // Display percentage and download size information
+    std::cout << "] " << std::fixed << std::setprecision(1) << percentage << "% "
+              << std::setprecision(2) << downloadedMB << "MB / " 
+              << std::setprecision(2) << totalMB << "MB        " << std::flush;
+    
+    return 0;
 }
 
 HuggingFaceModelLoader::HuggingFaceModelLoader() {
@@ -82,8 +113,16 @@ bool HuggingFaceModelLoader::download_file(const std::string& url, const std::st
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "neuronet/0.1.0");
     
+    // Set up progress bar
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, nullptr);
+    
     // Perform the request
     CURLcode res = curl_easy_perform(curl);
+    
+    // Move to next line after progress bar is complete
+    std::cout << std::endl;
     
     // Check for errors
     bool success = (res == CURLE_OK);
@@ -214,6 +253,9 @@ std::shared_ptr<HuggingFaceModel> HuggingFaceModel::from_pretrained(
         return nullptr;
     }
     
+    // Store the model ID
+    model->model_id_ = model_id;
+    
     // Load weights
     std::string weights_path;
     if (fs::exists(model_cache_dir + "/model.safetensors")) {
@@ -276,19 +318,35 @@ BertModel::BertModel(const std::unordered_map<std::string, std::string>& config)
         return;
     }
     
-    // Initialize BERT model architecture - simplified implementation
-    // A full implementation would create a proper neural network matching the BERT architecture
-    // with embedding layers, attention layers, etc.
+    // Initialize BERT model architecture - create a Sequential module
+    auto bert_module = std::make_shared<nn::Sequential>();
+    
+    // In a full implementation, we would add embedding layers, attention layers, etc.
+    // For now, we'll just create a simple placeholder network that produces
+    // output of the correct shape
+    
+    // Create a Linear layer to represent the entire model for testing
+    bert_module->add_module("output_layer", 
+        std::make_shared<nn::Linear>(128, hidden_size_)); // 128 -> hidden_size
+    
+    // Set the module
+    module_ = bert_module;
+    
     log_info("Initialized BERT model with {} hidden layers, {} attention heads", 
              std::to_string(num_hidden_layers_), std::to_string(num_attention_heads_));
 }
 
 Tensor BertModel::forward(const Tensor& input) {
-    // Placeholder for actual BERT forward processing logic
+    // If we have a valid module, use it
+    if (module_) {
+        return module_->forward(input);
+    }
+    
+    // Fallback: just return a dummy tensor
     log_info("BERT model forward pass with input shape: {}", 
              input.shape().empty() ? "[]" : std::to_string(input.shape()[0]));
     
-    // For now, just return a dummy tensor
+    // Return a dummy tensor of the expected shape
     std::vector<int64_t> output_shape = {input.shape()[0], hidden_size_};
     return Tensor(output_shape, DType::Float32, input.device().type());
 }
@@ -311,17 +369,35 @@ GPT2Model::GPT2Model(const std::unordered_map<std::string, std::string>& config)
         return;
     }
     
-    // Initialize GPT2 model architecture - simplified implementation
+    // Initialize GPT2 model architecture - create a Sequential module
+    auto gpt2_module = std::make_shared<nn::Sequential>();
+    
+    // In a full implementation, we would add embedding layers, attention layers, etc.
+    // For now, we'll just create a simple placeholder network that produces
+    // output of the correct shape
+    
+    // Create a Linear layer to represent the entire model for testing
+    gpt2_module->add_module("output_layer", 
+        std::make_shared<nn::Linear>(128, hidden_size_)); // 128 -> hidden_size
+    
+    // Set the module
+    module_ = gpt2_module;
+    
     log_info("Initialized GPT2 model with {} hidden layers, {} attention heads", 
              std::to_string(num_hidden_layers_), std::to_string(num_attention_heads_));
 }
 
 Tensor GPT2Model::forward(const Tensor& input) {
-    // Placeholder for actual GPT2 forward processing logic
+    // If we have a valid module, use it
+    if (module_) {
+        return module_->forward(input);
+    }
+    
+    // Fallback: just return a dummy tensor
     log_info("GPT2 model forward pass with input shape: {}", 
              input.shape().empty() ? "[]" : std::to_string(input.shape()[0]));
     
-    // For now, just return a dummy tensor
+    // Return a dummy tensor of the expected shape
     std::vector<int64_t> output_shape = {input.shape()[0], hidden_size_};
     return Tensor(output_shape, DType::Float32, input.device().type());
 }

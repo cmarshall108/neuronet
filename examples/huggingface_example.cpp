@@ -15,7 +15,9 @@ int main(int argc, char** argv) {
     // Set log level
     set_log_level(LogLevel::Info);
     
-    log_info("NeuroNet HuggingFace Model Example");
+    std::cout << "===============================" << std::endl;
+    std::cout << "Neuronet HuggingFace Model Example" << std::endl;
+    std::cout << "===============================" << std::endl;
     
     // Choose the available device with highest priority: CUDA > Metal > CPU
     DeviceType device_type = DeviceType::CPU;
@@ -41,6 +43,9 @@ int main(int argc, char** argv) {
     log_info("Loading model: {}", model_id);
     
     try {
+        // Show downloading with progress bar
+        std::cout << "Downloading model files (with progress bar):" << std::endl;
+        
         // Load model from HuggingFace
         auto model = models::HuggingFaceModel::from_pretrained(model_id, "", device_type);
         
@@ -57,8 +62,8 @@ int main(int argc, char** argv) {
         Tensor input(input_shape, DType::Int64, device_type);
         
         // Fill with dummy token IDs (all 101, which is [CLS] token in BERT)
-        std::vector<int64_t> dummy_tokens(128, 101);
-        for (int i = 0; i < 128; i++) {
+        std::vector<int64_t> dummy_tokens(input_shape[0] * input_shape[1], 101);
+        for (int i = 0; i < input_shape[0] * input_shape[1]; i++) {
             *((int64_t*)input.data<int64_t>() + i) = dummy_tokens[i];
         }
         

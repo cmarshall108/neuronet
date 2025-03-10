@@ -4,9 +4,13 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <curl/curl.h> // Add this include for curl_off_t type definition
 
 namespace neuronet {
 namespace models {
+
+// Progress callback for CURL downloads
+int progress_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 // Class to download and load models from HuggingFace
 class HuggingFaceModelLoader {
