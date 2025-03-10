@@ -245,6 +245,103 @@ bool BertTokenizer::is_whitespace(char c) const {
     return std::isspace(c) || c == '\t' || c == '\n' || c == '\r';
 }
 
+GPT2Tokenizer::GPT2Tokenizer(const std::string& vocab_path) {
+    load_vocab(vocab_path);
+}
+
+void GPT2Tokenizer::load_vocab(const std::string& vocab_path) {
+    log_info("Loading GPT-2 vocabulary from: {}", vocab_path);
+    
+    std::ifstream file(vocab_path);
+    if (!file.is_open()) {
+        log_error("Failed to open vocabulary file: {}", vocab_path);
+        return;
+    }
+    
+    // Read vocab JSON
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    auto vocab_json = utils::parse_json(buffer.str());
+    
+    // Parse vocab
+    int64_t index = 0;
+    for (auto& [token, id] : vocab_json.items()) {
+        vocab_[token] = id.get<int64_t>();
+        id_to_token_.push_back(token);
+        index++;
+    }
+    
+    log_info("Loaded GPT-2 vocabulary with {} tokens", std::to_string(vocab_.size()));
+}
+
+std::vector<int64_t> GPT2Tokenizer::encode(const std::string& text, int max_length) const {
+    std::vector<int64_t> token_ids;
+    
+    // Tokenize text
+    std::vector<std::string> tokens = tokenize(text);
+    
+    // Convert tokens to IDs
+    for (const auto& token : tokens) {
+        auto it = vocab_.find(token);
+        if (it != vocab_.end()) {
+            token_ids.push_back(it->second);
+        } else {
+            token_ids.push_back(unk_token_id_);
+        }
+    }
+    
+    // Handle max_length constraint
+    if (max_length > 0 && token_ids.size() > max_length) {
+        token_ids.resize(max_length);
+    }
+    
+    return token_ids;
+}
+
+std::string GPT2Tokenizer::decode(const std::vector<int64_t>& token_ids) const {
+    std::ostringstream result;
+    
+    for (size_t i = 0; i < token_ids.size(); i++) {
+        // Skip special tokens
+        if (token_ids[i] == pad_token_id_ || token_ids[i] == unk_token_id_) {
+            continue;
+        }
+        
+        // Get token string
+        if (token_ids[i] >= 0 && token_ids[i] < id_to_token_.size()) {
+            result << id_to_token_[token_ids[i]];
+        }
+    }
+    
+    return result.str();
+}
+
+std::vector<std::string> GPT2Tokenizer::tokenize(const std::string& text) const {
+    std::vector<std::string> tokens;
+    std::string current_token;
+    
+    // Basic tokenization: split by whitespace and handle punctuation
+    for (size_t i = 0; i < text.length(); i++) {
+        char c = text[i];
+        
+        if (std::isspace(c)) {
+            if (!current_token.empty()) {
+                tokens.push_back(current_token);
+                current_token.clear();
+            }
+        } else {
+            current_token += c;
+        }
+    }
+    
+    // Handle last token
+    if (!current_token.empty()) {
+        tokens.push_back(current_token);
+    }
+    
+    return tokens;
+}
+
 std::shared_ptr<Tokenizer> create_tokenizer_for_model(const std::string& model_id, const std::string& cache_dir) {
     // Determine cache directory
     std::string model_cache_dir = cache_dir;
@@ -262,10 +359,12 @@ std::shared_ptr<Tokenizer> create_tokenizer_for_model(const std::string& model_i
     }
     
     // Check what type of model and load appropriate tokenizer
-    std::string vocab_path = model_cache_dir + "/vocab.txt";
+    std::string vocab_path = model_cache_dir + "/vocab.json";
     
     if (model_id.find("bert") != std::string::npos) {
         return std::make_shared<BertTokenizer>(vocab_path);
+    } else if (model_id.find("gpt2") != std::string::npos) {
+        return std::make_shared<GPT2Tokenizer>(vocab_path);
     }
     
     // Default to BERT tokenizer for now

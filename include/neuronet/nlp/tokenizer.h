@@ -71,6 +71,39 @@ private:
     void load_vocab(const std::string& vocab_path);
 };
 
+// GPT-2 Tokenizer implementation specifically for GPT-2 models
+class GPT2Tokenizer : public Tokenizer {
+public:
+    GPT2Tokenizer(const std::string& vocab_path);
+    
+    std::vector<int64_t> encode(const std::string& text, int max_length = 0) const override;
+    std::string decode(const std::vector<int64_t>& token_ids) const override;
+    
+    size_t vocab_size() const override { return vocab_.size(); }
+    
+    int64_t cls_token_id() const override { return -1; } // Not used in GPT-2
+    int64_t sep_token_id() const override { return -1; } // Not used in GPT-2
+    int64_t pad_token_id() const override { return pad_token_id_; }
+    int64_t unk_token_id() const override { return unk_token_id_; }
+
+private:
+    // Tokenizes text into subword units
+    std::vector<std::string> tokenize(const std::string& text) const;
+    
+    // Maps from word piece to token ID
+    std::unordered_map<std::string, int64_t> vocab_;
+    
+    // Reverse mapping from token ID to word piece
+    std::vector<std::string> id_to_token_;
+    
+    // Special token IDs
+    int64_t pad_token_id_ = 50256;   // [PAD]
+    int64_t unk_token_id_ = 50257;   // [UNK]
+    
+    // Load vocabulary from file
+    void load_vocab(const std::string& vocab_path);
+};
+
 // Create a tokenizer based on model type
 std::shared_ptr<Tokenizer> create_tokenizer_for_model(const std::string& model_id, const std::string& cache_dir = "");
 
