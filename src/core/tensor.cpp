@@ -423,4 +423,8 @@ Tensor Tensor::load(const std::string& filename, DeviceType device_type) {
     return tensor;
 }
 
+bool Tensor::empty() const {
+    return size() == 0;
+}
+
 } // namespace neuronet

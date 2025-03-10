@@ -20,6 +20,8 @@ public:
     virtual std::unordered_map<std::string, Tensor> state_dict(std::string prefix = "") const;
     
     virtual void to(DeviceType device_type);
+    
+    virtual Device device() const = 0;
 };
 
 class Linear : public Module {
@@ -34,6 +36,8 @@ public:
     std::unordered_map<std::string, Tensor> state_dict(std::string prefix = "") const override;
     
     void to(DeviceType device_type) override;
+
+    Device device() const;
     
 private:
     int in_features_;
@@ -56,6 +60,8 @@ public:
     std::unordered_map<std::string, Tensor> state_dict(std::string prefix = "") const override;
     
     void to(DeviceType device_type) override;
+
+    Device device() const;
     
 private:
     int in_channels_;
@@ -117,6 +123,8 @@ public:
     std::unordered_map<std::string, Tensor> state_dict(std::string prefix = "") const override;
     
     void to(DeviceType device_type) override;
+
+    Device device() const;
     
 private:
     std::vector<std::pair<std::string, std::shared_ptr<Module>>> modules_;

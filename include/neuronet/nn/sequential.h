@@ -28,6 +28,9 @@ public:
     
     // Move to device
     void to(DeviceType device_type) override;
+
+    // Get device
+    Device device() const override;
     
 private:
     // Vector of (name, module) pairs to maintain order

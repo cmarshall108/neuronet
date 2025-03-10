@@ -51,6 +51,12 @@ public:
     // Factory method to create specific model type
     static std::shared_ptr<HuggingFaceModel> create_model_from_config(
         const std::unordered_map<std::string, std::string>& config);
+    
+    // Access model type
+    std::string model_type() const { return model_type_; }
+    
+    // Access the model's device
+    Device device() const { return module_ ? module_->device() : Device(DeviceType::CPU); }
 
 protected:
     std::string model_id_;

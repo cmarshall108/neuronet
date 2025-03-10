@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_map>
+#include <random>
 
 using namespace neuronet;
 using namespace neuronet::ops;
@@ -17,8 +18,19 @@ using namespace neuronet::nlp;
 void run_interactive_chat(std::shared_ptr<models::HuggingFaceModel> model, 
                          const std::string& model_id,
                          DeviceType device_type);
+void run_bert_chat(std::shared_ptr<models::HuggingFaceModel> model, 
+                   const std::string& model_id,
+                   DeviceType device_type);
+void run_gpt2_chat(std::shared_ptr<models::HuggingFaceModel> model, 
+                   const std::string& model_id,
+                   DeviceType device_type);
 void run_simulated_chat(const std::string& model_id);
 std::string generate_response(const Tensor& output, const std::string& user_input);
+std::string generate_text_from_gpt2(std::shared_ptr<models::GPT2Model> gpt2_model, 
+                                    std::shared_ptr<nlp::Tokenizer> tokenizer,
+                                    const std::string& prompt,
+                                    int max_length = 50,
+                                    float temperature = 0.8);
 
 // Simple tokenizer for demonstration purposes
 std::vector<int64_t> simple_tokenize(const std::string& text, int max_length = 128) {
@@ -142,8 +154,8 @@ int main(int argc, char** argv) {
         log_info("Using CPU device for inference");
     }
     
-    // Default to a more accessible model (BERT base by default)
-    std::string model_id = "bert-base-uncased";
+    // Default to a more accessible model (GPT-2 by default)
+    std::string model_id = "gpt2";
     
     // Check command line args for specific model
     if (argc > 1) {
@@ -200,10 +212,33 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// Run interactive chat with a loaded model
+// Router function to direct to appropriate chat implementation based on model type
 void run_interactive_chat(std::shared_ptr<models::HuggingFaceModel> model, 
                          const std::string& model_id,
                          DeviceType device_type) {
+    // Check if this is a GPT-2 model
+    bool is_gpt2 = (model_id.find("gpt2") != std::string::npos) || 
+                   (model->model_type() == "gpt2");
+    
+    if (is_gpt2) {
+        // Cast to GPT2Model if needed
+        auto gpt2_model = std::dynamic_pointer_cast<models::GPT2Model>(model);
+        if (gpt2_model) {
+            run_gpt2_chat(gpt2_model, model_id, device_type);
+        } else {
+            log_warn("Model is GPT-2 type but couldn't be cast properly, falling back to generic chat");
+            run_bert_chat(model, model_id, device_type); // Default to BERT-style chat
+        }
+    } else {
+        // Use BERT-style chat for non-GPT2 models
+        run_bert_chat(model, model_id, device_type);
+    }
+}
+
+// Run interactive chat with a BERT-style model
+void run_bert_chat(std::shared_ptr<models::HuggingFaceModel> model, 
+                   const std::string& model_id,
+                   DeviceType device_type) {
     // Create a tokenizer for the model
     auto tokenizer = nlp::create_tokenizer_for_model(model_id);
     
@@ -212,7 +247,7 @@ void run_interactive_chat(std::shared_ptr<models::HuggingFaceModel> model,
     
     // Main interaction loop
     std::cout << "\nWelcome to the NeuroNet Interactive Chat!" << std::endl;
-    std::cout << "You are chatting with model: " << model_id << std::endl;
+    std::cout << "You are chatting with model: " << model_id << " (BERT-style)" << std::endl;
     std::cout << "Type your messages below, or 'exit' to quit." << std::endl;
     
     while (true) {
@@ -243,7 +278,14 @@ void run_interactive_chat(std::shared_ptr<models::HuggingFaceModel> model,
         log_info("Processing message...");
         
         // Use the proper tokenizer instead of simple_tokenize
-        Tensor input_ids = tokenizer->create_input_tensors(conversation_history, 512, device_type);
+        Tensor input_ids;
+        if (tokenizer) {
+            input_ids = tokenizer->create_input_tensors(conversation_history, 512, device_type);
+        } else {
+            // Fallback to simple tokenizer
+            std::vector<int64_t> tokens = simple_tokenize(conversation_history, 512);
+            input_ids = Tensor({1, static_cast<int64_t>(tokens.size())}, tokens.data(), DType::Int64, device_type);
+        }
         
         // Forward pass
         log_info("Running model inference...");
@@ -261,15 +303,210 @@ void run_interactive_chat(std::shared_ptr<models::HuggingFaceModel> model,
     }
 }
 
+// Run interactive chat with a GPT-2 model
+void run_gpt2_chat(std::shared_ptr<models::HuggingFaceModel> model, 
+                   const std::string& model_id,
+                   DeviceType device_type) {
+    // Cast to GPT2Model for specific operations
+    auto gpt2_model = std::dynamic_pointer_cast<models::GPT2Model>(model);
+    if (!gpt2_model) {
+        log_error("Failed to cast model to GPT2Model");
+        return;
+    }
+    
+    // Create a tokenizer for the model
+    auto tokenizer = nlp::create_tokenizer_for_model(model_id);
+    if (!tokenizer) {
+        log_warn("Couldn't load specific tokenizer for GPT-2, using default implementation");
+        // Could implement a basic GPT-2 tokenizer here if needed
+    }
+    
+    // Conversation history for context
+    std::vector<std::pair<std::string, std::string>> conversation;
+    
+    // Main interaction loop
+    std::cout << "\nWelcome to the NeuroNet Interactive Chat!" << std::endl;
+    std::cout << "You are chatting with model: " << model_id << " (GPT-2)" << std::endl;
+    std::cout << "Type your messages below, or 'exit' to quit." << std::endl;
+    
+    while (true) {
+        // Get user input
+        std::cout << "\nYou: ";
+        std::string user_input;
+        std::getline(std::cin, user_input);
+        
+        if (user_input == "exit" || user_input == "quit") {
+            break;
+        }
+        
+        if (user_input == "clear") {
+            // Clear conversation history
+            conversation.clear();
+            std::cout << "Conversation history cleared." << std::endl;
+            continue;
+        }
+        
+        // Prepare the prompt using conversation history
+        std::string prompt = "";
+        
+        // Format conversation history
+        for (const auto& exchange : conversation) {
+            prompt += "Human: " + exchange.first + "\n";
+            prompt += "Assistant: " + exchange.second + "\n";
+        }
+        
+        // Add current user input
+        prompt += "Human: " + user_input + "\nAssistant:";
+        
+        // Generate text using GPT-2 model
+        log_info("Generating response with GPT-2 model...");
+        std::string response = generate_text_from_gpt2(gpt2_model, tokenizer, prompt);
+        
+        // Print the response
+        std::cout << "\nAssistant: ";
+        print_response(response);
+        
+        // Update conversation history
+        conversation.push_back({user_input, response});
+    }
+}
+
+// Generate text from GPT-2 model using auto-regressive sampling
+std::string generate_text_from_gpt2(std::shared_ptr<models::GPT2Model> gpt2_model, 
+                                    std::shared_ptr<nlp::Tokenizer> tokenizer,
+                                    const std::string& prompt,
+                                    int max_length,
+                                    float temperature) {
+    // Use proper tokenizer if available, or fallback to simple implementation
+    std::vector<int64_t> input_tokens;
+    DeviceType device_type = gpt2_model->device().type();
+    
+    if (tokenizer) {
+        // Use the proper tokenizer
+        input_tokens = tokenizer->encode(prompt);
+    } else {
+        // Fallback to simple token mapping
+        // This is for demonstration; a real GPT-2 tokenizer would be needed
+        input_tokens = simple_tokenize(prompt);
+    }
+    
+    // Limit input tokens to prevent excessive context length
+    if (input_tokens.size() > 1024) {
+        input_tokens.erase(input_tokens.begin(), input_tokens.end() - 1024);
+    }
+    
+    // Create input tensor from tokens
+    Tensor input_tensor({1, static_cast<int64_t>(input_tokens.size())}, DType::Int64, device_type);
+    int64_t* input_data = input_tensor.data<int64_t>();
+    for (size_t i = 0; i < input_tokens.size(); i++) {
+        input_data[i] = input_tokens[i];
+    }
+    
+    // Random number generator for sampling
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    // Track generated tokens
+    std::vector<int64_t> generated_tokens(input_tokens);
+    
+    // Generate tokens auto-regressively
+    for (int i = 0; i < max_length; i++) {
+        // Forward pass through the model
+        log_debug("Running inference for token position {}", std::to_string(generated_tokens.size()));
+        
+        // Create tensor for current sequence
+        Tensor current_tensor({1, static_cast<int64_t>(generated_tokens.size())}, DType::Int64, device_type);
+        int64_t* current_data = current_tensor.data<int64_t>();
+        for (size_t j = 0; j < generated_tokens.size(); j++) {
+            current_data[j] = generated_tokens[j];
+        }
+        
+        // Get model output
+        Tensor output = gpt2_model->forward(current_tensor);
+        
+        // Extract the logits for the last token
+        // GPT-2 output shape is [batch_size, seq_len, vocab_size]
+        const auto& output_shape = output.shape();
+        if (output_shape.size() < 3) {
+            log_error("Unexpected output shape from GPT-2 model");
+            break;
+        }
+        
+        int64_t seq_len = output_shape[1];
+        int64_t vocab_size = output_shape[2];
+        
+        // Get logits for the last position
+        std::vector<float> logits(vocab_size);
+        const float* output_data = output.data<float>();
+        
+        // Copy the logits for the last token position
+        for (int64_t v = 0; v < vocab_size; v++) {
+            logits[v] = output_data[(seq_len - 1) * vocab_size + v];
+        }
+        
+        // Apply temperature to logits
+        if (temperature > 0) {
+            for (auto& logit : logits) {
+                logit /= temperature;
+            }
+        }
+        
+        // Convert to probabilities using softmax
+        float max_logit = *std::max_element(logits.begin(), logits.end());
+        float sum_exp = 0.0;
+        
+        std::vector<float> probs(logits.size());
+        for (size_t j = 0; j < logits.size(); j++) {
+            probs[j] = std::exp(logits[j] - max_logit);
+            sum_exp += probs[j];
+        }
+        
+        for (auto& prob : probs) {
+            prob /= sum_exp;
+        }
+        
+        // Sample from the probability distribution
+        std::discrete_distribution<int> distribution(probs.begin(), probs.end());
+        int next_token = distribution(gen);
+        
+        // Add the new token to our generated sequence
+        generated_tokens.push_back(next_token);
+        
+        // Check for end of text token or special cases
+        if (next_token == 50256) { // GPT-2 EOS token
+            break;
+        }
+    }
+    
+    // Convert generated tokens to text
+    std::string generated_text;
+    
+    if (tokenizer) {
+        // Use proper tokenizer for decoding
+        generated_text = tokenizer->decode(generated_tokens);
+        
+        // Extract only the generated response (after the prompt)
+        size_t response_start = prompt.length();
+        if (generated_text.length() > response_start) {
+            generated_text = generated_text.substr(response_start);
+        } else {
+            generated_text = "I'm not sure how to respond to that.";
+        }
+    } else {
+        // Simple demo decoding (not accurate for real GPT-2)
+        generated_text = simple_detokenize(std::vector<int>(
+            generated_tokens.begin() + input_tokens.size(), 
+            generated_tokens.end()
+        ));
+    }
+    
+    return generated_text;
+}
+
 // Run simulated chat without a model
 void run_simulated_chat(const std::string& model_id) {
     std::string assistant_name = "Assistant";
-    
-    // If it's a Grok model, use "Grok" as the assistant name
-    if (model_id.find("grok") != std::string::npos || model_id.find("xai") != std::string::npos) {
-        assistant_name = "Grok";
-    }
-    
+
     std::cout << "\nWelcome to the NeuroNet Simulated Chat!" << std::endl;
     std::cout << "This is a simulation of " << model_id << " (model not actually loaded)" << std::endl;
     std::cout << "Type your messages below, or 'exit' to quit." << std::endl;

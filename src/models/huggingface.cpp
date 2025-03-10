@@ -921,18 +921,135 @@ GPT2Model::GPT2Model(const std::unordered_map<std::string, std::string>& config)
 }
 
 Tensor GPT2Model::forward(const Tensor& input) {
-    // If we have a valid module, use it
+    // Check if we have input
+    if (input.size() == 0) { // Fix the empty method error
+        log_error("GPT2 model received empty input tensor");
+        return Tensor();
+    }
+
+    // Get input dimensions
+    const auto& input_shape = input.shape();
+    if (input_shape.size() != 2) {
+        log_error("GPT2 model expects 2D input tensor [batch_size, seq_length]");
+        return Tensor();
+    }
+
+    int64_t batch_size = input_shape[0];
+    int64_t seq_len = input_shape[1];
+
+    log_info("GPT2 model forward pass with input shape: {}x{}", 
+             std::to_string(batch_size), std::to_string(seq_len));
+
+    // Get access to the state dictionary for weights
+    auto state = this->state_dict();
+
+    // =================== GPT2 Forward Pass ===================
+    // 1. Token Embeddings (wte) - transform token ids into embeddings
+    Tensor token_embeddings = Tensor({batch_size, seq_len, hidden_size_}, DType::Float32, input.device().type());
+    
+    // Get the token embedding weights from the state dict
+    Tensor token_embedding_weight;  // [vocab_size, hidden_size]
+    if (state.find("wte.weight") != state.end()) {
+        token_embedding_weight = state["wte.weight"];
+    } else {
+        log_warn("Token embedding weights not found, using random initialization");
+        int vocab_size = 50257;  // Default GPT2 vocabulary size
+        token_embedding_weight = Tensor({vocab_size, hidden_size_}, DType::Float32, input.device().type());
+        
+        // Initialize with small random values
+        float* embed_data = token_embedding_weight.data<float>();
+        for (int i = 0; i < token_embedding_weight.size(); i++) {
+            embed_data[i] = 0.01f * ((float)rand() / RAND_MAX - 0.5f);
+        }
+    }
+    
+    // Get input token IDs and map to embeddings
+    const int64_t* input_token_ids = input.data<int64_t>();
+    float* embed_data = token_embeddings.data<float>();
+    
+    // Use vocabulary size to constrain token IDs
+    int64_t vocab_size = token_embedding_weight.shape()[0];
+    int64_t embed_dim = token_embedding_weight.shape()[1];
+    
+    // Get pointer to embedding weight data
+    const float* embed_weights = token_embedding_weight.data<float>();
+    
+    // Map each token ID to its embedding vector
+    for (int64_t b = 0; b < batch_size; b++) {
+        for (int64_t s = 0; s < seq_len; s++) {
+            // Get token ID at position (b, s)
+            int64_t token_id = input_token_ids[b * seq_len + s];
+            
+            // Clamp to valid range
+            token_id = std::min(std::max(token_id, (int64_t)0), vocab_size - 1);
+            
+            // Copy embedding for this token
+            for (int64_t e = 0; e < embed_dim; e++) {
+                embed_data[(b * seq_len + s) * embed_dim + e] = 
+                    embed_weights[token_id * embed_dim + e];
+            }
+        }
+    }
+    
+    // 2. Position Embeddings (wpe)
+    Tensor position_embedding_weight;
+    if (state.find("wpe.weight") != state.end()) {
+        position_embedding_weight = state["wpe.weight"];
+    } else {
+        // Create position embeddings
+        int max_positions = 1024;  // GPT-2 default
+        log_warn("Position embedding weights not found, using sinusoidal initialization");
+        position_embedding_weight = Tensor({max_positions, hidden_size_}, DType::Float32, input.device().type());
+        
+        float* pos_embed_data = position_embedding_weight.data<float>();
+        
+        // Apply sinusoidal position encoding
+        for (int64_t pos = 0; pos < max_positions; pos++) {
+            for (int64_t i = 0; i < hidden_size_; i += 2) {
+                float div_term = powf(10000.0f, -1.0f * i / hidden_size_);
+                if (i < hidden_size_) {
+                    pos_embed_data[pos * hidden_size_ + i] = sinf(pos * div_term);
+                }
+                if (i + 1 < hidden_size_) {
+                    pos_embed_data[pos * hidden_size_ + i + 1] = cosf(pos * div_term);
+                }
+            }
+        }
+    }
+    
+    // Add position embeddings to token embeddings (creating inputs)
+    Tensor inputs = Tensor(token_embeddings.shape(), DType::Float32, input.device().type());
+    float* inputs_data = inputs.data<float>();
+    const float* pos_embed_weights = position_embedding_weight.data<float>();
+    
+    for (int64_t b = 0; b < batch_size; b++) {
+        for (int64_t s = 0; s < seq_len; s++) {
+            // Clamp position to max position embeddings
+            int64_t pos = std::min(s, (int64_t)position_embedding_weight.shape()[0] - 1);
+            
+            // Add position embedding to token embedding
+            for (int64_t e = 0; e < embed_dim; e++) {
+                inputs_data[(b * seq_len + s) * embed_dim + e] = 
+                    embed_data[(b * seq_len + s) * embed_dim + e] +
+                    pos_embed_weights[pos * embed_dim + e];
+            }
+        }
+    }
+    
+    // If we have a module implementation, use it instead of our manual implementation
     if (module_) {
+        log_info("Using module implementation for forward pass");
         return module_->forward(input);
     }
     
-    // Fallback: just return a dummy tensor
-    log_info("GPT2 model forward pass with input shape: {}", 
-             input.shape().empty() ? "[]" : std::to_string(input.shape()[0]));
+    // For simplicity in the current version, we'll return the embedded representation
+    // In a full implementation, we would process through transformer layers
+    log_info("GPT2 forward complete, returning embeddings with shape: {}x{}x{}", 
+             std::to_string(inputs.shape()[0]), 
+             std::to_string(inputs.shape()[1]), 
+             std::to_string(inputs.shape()[2]));
     
-    // Return a dummy tensor of the expected shape
-    std::vector<int64_t> output_shape = {input.shape()[0], hidden_size_};
-    return Tensor(output_shape, DType::Float32, input.device().type());
+    return inputs;
 }
 
 } // namespace models

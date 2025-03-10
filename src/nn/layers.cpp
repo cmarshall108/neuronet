@@ -21,6 +21,10 @@ void Module::to(DeviceType device_type) {
     // Base implementation does nothing
 }
 
+Device Module::device() const {
+    return Device(DeviceType::CPU); // Default implementation
+}
+
 // Linear layer implementation
 Linear::Linear(int in_features, int out_features, bool bias)
     : in_features_(in_features), out_features_(out_features), has_bias_(bias) {
@@ -134,6 +138,10 @@ void Linear::to(DeviceType device_type) {
     }
 }
 
+Device Linear::device() const {
+    return weight_.device(); // Return the device of the weight tensor
+}
+
 // Dropout implementation
 Dropout::Dropout(float p) : p_(p), training_(true) {
     if (p < 0 || p > 1) {
@@ -202,6 +210,13 @@ void Sequential::to(DeviceType device_type) {
     for (const auto& [name, module] : modules_) {
         module->to(device_type);
     }
+}
+
+Device Sequential::device() const {
+    if (!modules_.empty()) {
+        return modules_.front().second->device();
+    }
+    return Device(DeviceType::CPU);
 }
 
 // LayerNorm implementation
@@ -470,6 +485,10 @@ void Conv2d::to(DeviceType device_type) {
     if (has_bias_) {
         bias_ = bias_.to(device_type);
     }
+}
+
+Device Conv2d::device() const {
+    return weight_.device(); // Return the device of the weight tensor
 }
 
 } // namespace nn

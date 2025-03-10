@@ -96,6 +96,8 @@ public:
     // Add a grad() method for optimizer support
     Tensor* grad() const { return nullptr; } // Placeholder, to be implemented properly
 
+    bool empty() const;
+
 private:
     std::shared_ptr<TensorImpl> impl_;
 };
